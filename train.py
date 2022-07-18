@@ -36,7 +36,7 @@ with open(json_file_path) as json_file:
 
 weights = Label_weight(data, ['Pegah Moghaddam','Michelle Lyn','Sedara Burson','Yared Alemu'])
 weights_onedoc = weights.get_weight()
-#weights_onedoc = weights_onedoc.cuda()
+weights_onedoc = weights_onedoc.cuda()
 
 data_length = len(data)
 l_train = int(np.floor(data_length * 0.5))
@@ -68,8 +68,8 @@ model.classifier = torch.nn.Linear(1024, 100)
 
 output_class = 20
 
-# model = model.cuda()
-model = model.to(device)
+model = model.cuda()
+# model = model.to(device)
 
 # Change it to adam optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=0.0002) # ADAM optimizer (Most well-known optimizer for deep learning)
@@ -85,8 +85,8 @@ for epoch in range(0, epochs):
     mean_loss = []
     with tqdm(total=int(n_train*batch_size)-1, desc=f'Epoch {epoch + 1}/{epochs}', unit='img', bar_format='{desc:<5.5}{percentage:3.0f}%|{bar:10}{r_bar}') as pbar:
         for input, labels in trainloader:
-            #input, labels =  input.cuda(), labels.cuda()
-            input, labels =  input.to(device), labels.to(device)
+            input, labels =  input.cuda(), labels.cuda()
+            #input, labels =  input.to(device), labels.to(device)
 
             batch_size = input.shape[0]
             input = (input-torch.min(input))/(torch.max(input)-torch.min(input))
@@ -119,8 +119,8 @@ for epoch in range(0, epochs):
     f1_lst = []
     with tqdm(total=int(n_val*batch_size)-1, desc=f'Epoch {epoch + 1}/{epochs}', unit='img', bar_format='{desc:<5.5}{percentage:3.0f}%|{bar:10}{r_bar}') as pbar:
         for input, labels in valloader:
-            #input, labels =  input.cuda(), labels.cuda()
-            input, labels =  input.to(device), labels.to(device)
+            input, labels =  input.cuda(), labels.cuda()
+            #input, labels =  input.to(device), labels.to(device)
 
             input = (input-torch.min(input))/(torch.max(input)-torch.min(input))
 
@@ -185,15 +185,15 @@ for epoch in range(0, epochs):
             # Add loss (batch) value to tqdm
             pbar.set_postfix(**{'val_CE_loss': loss.item(), 'p': round(precision, 4), 'r': round(recall, 4), 'f1': round(fscore, 4)})
 
-    # logger.info('Precision %f, Recall: %f, F1: %f' %
-    #             (torch.from_numpy(np.array(np.mean(p_lst))).cuda(),
-    #                 torch.from_numpy(np.array(np.mean(r_lst))).cuda(),
-    #                 torch.from_numpy(np.array(np.mean(f1_lst))).cuda()))
-
     logger.info('Precision %f, Recall: %f, F1: %f' %
-                (torch.from_numpy(np.array(np.mean(p_lst))).to(device),
-                    torch.from_numpy(np.array(np.mean(r_lst))).to(device),
-                    torch.from_numpy(np.array(np.mean(f1_lst))).to(device)))
+                (torch.from_numpy(np.array(np.mean(p_lst))).cuda(),
+                    torch.from_numpy(np.array(np.mean(r_lst))).cuda(),
+                    torch.from_numpy(np.array(np.mean(f1_lst))).cuda()))
+
+    # logger.info('Precision %f, Recall: %f, F1: %f' %
+    #             (torch.from_numpy(np.array(np.mean(p_lst))).to(device),
+    #                 torch.from_numpy(np.array(np.mean(r_lst))).to(device),
+    #                 torch.from_numpy(np.array(np.mean(f1_lst))).to(device)))
 
     print('Total dataset precision {}'.format(np.mean(p_lst)))
     print('Total dataset recall {}'.format(np.mean(r_lst)))
