@@ -7,7 +7,7 @@ from itertools import permutations
 import itertools
 import sklearn
 import pdb
-import inquirer
+#import inquirer
 
 
 # questions = [
@@ -91,8 +91,8 @@ class Data_emotion(data.Dataset):
         wav_file = os.path.join(self.root_wav, self.wav_files[index]).replace('.m4a', '.wav')
         emo_label = self.emo_files[index]
         
-        max_len = 250000
-        y, y_sr = librosa.load(wav_file, sr=4000)    # Load the wav_file
+        max_len = 910000
+        y, y_sr = librosa.load(wav_file, sr=16_000)    # Load the wav_file
         y = librosa.util.fix_length(y, size=max_len)
         audio = torch.Tensor(y)
 

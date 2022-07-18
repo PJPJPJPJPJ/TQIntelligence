@@ -6,7 +6,7 @@ import numpy as np
 from data import Data_emotion
 from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
 from tqdm import tqdm
-import torchmetrics
+#import torchmetrics
 import itertools
 import os
 import json
