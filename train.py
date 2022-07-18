@@ -20,12 +20,14 @@ import log
 import pdb
 
 # Choose the GPUs
-os.environ["CUDA_DEVICE_ORDER"] = 'PCI_BUS_ID'
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
+# os.environ["CUDA_DEVICE_ORDER"] = 'PCI_BUS_ID'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 
-root = '/lrde/home2/ychen/s3prl'
-json_path = 'voice_labels.json'
-root_wav = '/lrde/image/voice/voice_samples'
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu") 
+
+root = '/Users/pjpjpj/Documents/OMSA/Practicum/TQIntelligence/Data/voice_labeling_report_21_May_22'
+json_path = 'voice_labels_s.json'
+root_wav = '/Users/pjpjpj/Documents/OMSA/Practicum/TQIntelligence/Data/voice_samples/'
 
 
 json_file_path = os.path.join(root, json_path)
@@ -34,7 +36,7 @@ with open(json_file_path) as json_file:
 
 weights = Label_weight(data, ['Pegah Moghaddam','Michelle Lyn','Sedara Burson','Yared Alemu'])
 weights_onedoc = weights.get_weight()
-weights_onedoc = weights_onedoc.cuda()
+#weights_onedoc = weights_onedoc.cuda()
 
 data_length = len(data)
 l_train = int(np.floor(data_length * 0.5))
@@ -66,7 +68,8 @@ model.classifier = torch.nn.Linear(1024, 100)
 
 output_class = 20
 
-model = model.cuda()
+# model = model.cuda()
+model = model.to(device)
 
 # Change it to adam optimizer
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=0.0002) # ADAM optimizer (Most well-known optimizer for deep learning)
@@ -82,7 +85,8 @@ for epoch in range(0, epochs):
     mean_loss = []
     with tqdm(total=int(n_train*batch_size)-1, desc=f'Epoch {epoch + 1}/{epochs}', unit='img', bar_format='{desc:<5.5}{percentage:3.0f}%|{bar:10}{r_bar}') as pbar:
         for input, labels in trainloader:
-            input, labels =  input.cuda(), labels.cuda()
+            #input, labels =  input.cuda(), labels.cuda()
+            input, labels =  input.to(device), labels.to(device)
 
             batch_size = input.shape[0]
             input = (input-torch.min(input))/(torch.max(input)-torch.min(input))
@@ -115,7 +119,8 @@ for epoch in range(0, epochs):
     f1_lst = []
     with tqdm(total=int(n_val*batch_size)-1, desc=f'Epoch {epoch + 1}/{epochs}', unit='img', bar_format='{desc:<5.5}{percentage:3.0f}%|{bar:10}{r_bar}') as pbar:
         for input, labels in valloader:
-            input, labels =  input.cuda(), labels.cuda()
+            #input, labels =  input.cuda(), labels.cuda()
+            input, labels =  input.to(device), labels.to(device)
 
             input = (input-torch.min(input))/(torch.max(input)-torch.min(input))
 
@@ -131,14 +136,39 @@ for epoch in range(0, epochs):
 
             loss = torch.nn.CrossEntropyLoss(weight=weights_onedoc)(final_prediction, labels.squeeze().long()) # Loss function measures the difference between predictions and labels
 
-            pred_label = []
-            for i in [0,1,2,3,4]:
-                single_emo_block = final_prediction[:,i*4:i*4+4]
-                single_emo_max = torch.argmax(single_emo_block)
-                single_emo_max = i*4 + (single_emo_max.item()) % 4
-                pred_label.append(single_emo_max)
+            # pred_label = []
+            # for i in [0,1,2,3,4]:
+            #     single_emo_block = final_prediction[:,i*4:i*4+4]
+            #     single_emo_max = torch.argmax(single_emo_block)
+            #     single_emo_max = i*4 + (single_emo_max.item()) % 4
+            #     pred_label.append(single_emo_max)
 
-            pred_label = torch.Tensor(pred_label)
+            # pred_label = torch.Tensor(pred_label)
+
+            final_prediction = final_prediction.reshape(20,5)
+
+            prediction_sort, label = torch.sort(final_prediction, 0, descending = True)
+            #pdb.set_trace()
+            max_prob = prediction_sort[0,:]
+            max_prob_sort, index_max_prob = torch.sort(max_prob, descending=True)
+
+            prediction_sort2 = prediction_sort[:,index_max_prob]
+            label2 = label[:,index_max_prob]
+            
+            #initialize the final decision list
+            decision_l = [label2[0,0].item()]
+            #pdb.set_trace()
+
+            for i in range(1,prediction_sort2.shape[1]):
+                for j in range(label2.shape[0]):
+                    if torch.all(abs(torch.Tensor(decision_l)-label2[j,i])>3):
+                        decision_l.append(label2[j,i].item())
+                        #temp_label = label2[j,i]
+                        break
+
+            decision_l.sort()
+            #pdb.set_trace()
+            pred_label = torch.Tensor(decision_l)
 
             pred = pred_label.detach().cpu().numpy().astype(np.uint8)
             labels = labels.squeeze().detach().cpu().numpy().astype(np.uint8)
@@ -155,10 +185,15 @@ for epoch in range(0, epochs):
             # Add loss (batch) value to tqdm
             pbar.set_postfix(**{'val_CE_loss': loss.item(), 'p': round(precision, 4), 'r': round(recall, 4), 'f1': round(fscore, 4)})
 
+    # logger.info('Precision %f, Recall: %f, F1: %f' %
+    #             (torch.from_numpy(np.array(np.mean(p_lst))).cuda(),
+    #                 torch.from_numpy(np.array(np.mean(r_lst))).cuda(),
+    #                 torch.from_numpy(np.array(np.mean(f1_lst))).cuda()))
+
     logger.info('Precision %f, Recall: %f, F1: %f' %
-                (torch.from_numpy(np.array(np.mean(p_lst))).cuda(),
-                    torch.from_numpy(np.array(np.mean(r_lst))).cuda(),
-                    torch.from_numpy(np.array(np.mean(f1_lst))).cuda()))
+                (torch.from_numpy(np.array(np.mean(p_lst))).to(device),
+                    torch.from_numpy(np.array(np.mean(r_lst))).to(device),
+                    torch.from_numpy(np.array(np.mean(f1_lst))).to(device)))
 
     print('Total dataset precision {}'.format(np.mean(p_lst)))
     print('Total dataset recall {}'.format(np.mean(r_lst)))
